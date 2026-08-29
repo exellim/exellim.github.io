@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Central.Blox Chipmunk Converter</title>
+  <meta name="description" content="Free unlimited chipmunk audio converter. No account, no credits, no server upload." />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <header class="topbar shell">
+    <a class="brand" href="#"><div class="brand-mark">CB</div><div><strong>CENTRAL.BLOX</strong><span>CHIPMUNK AUDIO</span></div></a>
+    <div class="status-pill"><span class="status-dot"></span> FREE · NO LOGIN · NO CREDITS</div>
+  </header>
+
+  <main class="shell page">
+    <section class="hero">
+      <div class="steps"><span><b>1</b> Upload audio</span><i>→</i><span><b>2</b> Convert chipmunk</span><i>→</i><span><b>3</b> Download OGG</span></div>
+      <h1>Chipmunk <span>Converter</span></h1>
+      <h2>Free audio converter untuk tim Anda</h2>
+      <p>Tidak ada sign up, tidak ada kartu/bank, tidak ada daily credits. File diproses langsung di browser pengguna, bukan dikirim ke server.</p>
+      <div class="privacy-chip">◉ Local processing · unlimited conversions*</div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading">
+        <div><div class="eyebrow">▥ &nbsp; CONVERTER</div><p class="active-preset">ACTIVE PRESET <span>—</span> <b id="activePresetLabel">SPEED 2.5X · AMPLIFY -6 DB</b></p></div>
+        <div class="processed-counter"><span>◎</span><b id="processedCount">0</b><small>AUDIO PROCESSED</small></div>
+      </div>
+
+      <div class="preset-grid">
+        <button class="preset" data-preset="2.3"><strong>2.3x</strong><span>-4 dB</span></button>
+        <button class="preset active" data-preset="2.5"><strong>2.5x</strong><span>-6 dB</span></button>
+        <button class="preset" data-preset="2.7"><strong>2.7x</strong><span>-8 dB</span></button>
+      </div>
+
+      <div class="dropzone" id="dropzone" tabindex="0">
+        <input id="fileInput" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac" multiple hidden />
+        <div class="upload-icon">⇧</div>
+        <strong>Upload Audio File</strong>
+        <p>Klik atau drag audio ke sini · bisa pilih banyak file sekaligus</p>
+        <small>MP3 · WAV · M4A · OGG · FLAC · AAC</small>
+      </div>
+
+      <div class="queue" id="queue" hidden>
+        <div class="queue-head"><span>Selected files</span><button id="clearQueue" class="link-btn">Clear</button></div>
+        <div id="queueList"></div>
+      </div>
+
+      <button class="primary-btn" id="convertBtn" disabled><span id="convertBtnText">Convert to Chipmunk OGG</span></button>
+      <div class="progress-bar" id="progressBar" hidden><div id="progressFill"></div></div>
+      <div class="engine-status" id="engineStatus">Audio engine akan dimuat saat conversion pertama.</div>
+      <div class="hint"><b>Unlimited:</b> aplikasi tidak memasang kuota harian, credits, ataupun jumlah conversion. Batas praktis hanya RAM/CPU browser dan ukuran file yang mampu diproses perangkat.</div>
+    </section>
+
+    <section class="panel" id="resultPanel" hidden>
+      <div class="eyebrow">CONVERSION RESULT</div>
+      <div class="result-meta-row"><div class="success-chip" id="editedChip">Audio edited</div><div class="copy-chip">OUTPUT <b>OGG</b></div><div class="copy-chip">SPEED <b id="resultSpeed">2.5x</b></div></div>
+      <div id="currentResult"></div>
+    </section>
+
+    <section class="panel history-panel">
+      <div class="history-head"><div class="eyebrow">◴ &nbsp; CONVERSION HISTORY <span class="count-badge" id="historyCount">0 entries</span></div><button class="danger-btn" id="clearHistory">Clear All</button></div>
+      <div class="table-wrap"><table><thead><tr><th>#</th><th>TITLE</th><th>PRESET</th><th>SIZE</th><th>DATE</th><th></th></tr></thead><tbody id="historyBody"></tbody></table><div class="empty-state" id="emptyHistory">Belum ada conversion history.</div></div>
+    </section>
+
+    <footer><p>*Unlimited berarti tidak ada limit dari aplikasi. Conversion berjalan lokal sehingga performa tetap tergantung perangkat dan browser pengguna.</p></footer>
+  </main>
+
+  <div class="toast" id="toast"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
