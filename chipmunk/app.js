@@ -133,16 +133,17 @@ function loadScript(url){
   return new Promise((resolve,reject)=>{
     const existing=[...document.scripts].find(s=>s.src===url);
     if(existing){
-      if(window.FFmpeg&&window.FFmpeg.createFFmpeg)return resolve();
-      existing.addEventListener('load',()=>resolve(),{once:true});
-      existing.addEventListener('error',()=>reject(new Error(`Gagal memuat ${url}`)),{once:true});
-      return;
+      if((window.FFmpeg&&window.FFmpeg.createFFmpeg)||window.JSZip)return resolve();
+      existing.remove();
     }
     const s=document.createElement('script');
     s.src=url;
     s.async=true;
     s.onload=()=>resolve();
-    s.onerror=()=>reject(new Error(`Gagal memuat ${url}`));
+    s.onerror=()=>{
+      s.remove();
+      reject(new Error(`Gagal memuat ${url}`));
+    };
     document.head.appendChild(s);
   });
 }
@@ -163,18 +164,19 @@ async function ensureFFmpegLibrary(){
   throw lastError||new Error('Library FFmpeg gagal dimuat dari semua server cadangan.');
 }
 
+function updateFFmpegProgress({ratio}){
+  const r=Number.isFinite(ratio)?Math.max(0,Math.min(1,ratio)):0;
+  const overall=((state.batchIndex+r)/Math.max(1,state.batchTotal))*100;
+  $('#progressFill').style.width=`${Math.max(0,Math.min(100,overall))}%`;
+}
+
 async function createEngineFrom(corePath){
   const api=window.FFmpeg;
   const ffmpeg=api.createFFmpeg({
     log:false,
-    mainName:'main',
-    corePath,
-    progress:({ratio})=>{
-      const r=Number.isFinite(ratio)?Math.max(0,Math.min(1,ratio)):0;
-      const overall=((state.batchIndex+r)/Math.max(1,state.batchTotal))*100;
-      $('#progressFill').style.width=`${Math.max(0,Math.min(100,overall))}%`;
-    }
+    corePath
   });
+  if(typeof ffmpeg.setProgress==='function')ffmpeg.setProgress(updateFFmpegProgress);
   await ffmpeg.load();
   return ffmpeg;
 }
@@ -321,7 +323,7 @@ convertBtn.onclick=async()=>{
       state.batchIndex=i;
       const file=batch[i];
       $('#convertBtnText').textContent=`Converting ${i+1} / ${batch.length}`;
-      setEngineStatus(`Processing ${i+1}/${batch.length} · ${escapeHtml(file.name)}` ,true);
+      setEngineStatus(`Processing ${i+1}/${batch.length} · ${escapeHtml(file.name)}`,true);
 
       try{
         const result=await convertOneWithRetry(file,p,i);
@@ -485,8 +487,6 @@ updatePresetUI();
 renderQueue();
 renderHistory();
 
-// Preload engine setelah halaman interaktif. Tidak mengubah kualitas audio;
-// hanya memindahkan waktu startup engine ke background.
 if('requestIdleCallback' in window){
   requestIdleCallback(()=>{void warmEngine();},{timeout:1800});
 }else{
