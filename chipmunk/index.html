@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#071113" />
   <title>Central.Blox Chipmunk Converter</title>
-  <meta name="description" content="Free unlimited chipmunk audio converter. No account, no credits, no server upload." />
+  <meta name="description" content="Free unlimited chipmunk audio converter. Multi-file batch conversion, no account, no credits, no server upload." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -37,7 +37,7 @@
     <section class="intro">
       <div class="intro-badge">CHIPMUNK AUDIO TOOL</div>
       <h1>Audio <span>Converter</span></h1>
-      <p>Ubah audio menjadi versi chipmunk dengan preset speed + pitch. Semua proses berjalan langsung di browser Anda.</p>
+      <p>Pilih banyak lagu sekaligus, convert ke chipmunk OGG, lalu download satu per satu atau semuanya dalam satu ZIP. Semua proses berjalan di browser Anda.</p>
       <div class="flow">
         <div class="flow-step"><span>01</span><b>Upload</b></div>
         <i></i>
@@ -53,7 +53,7 @@
           <div>
             <div class="section-kicker">CONVERTER</div>
             <h2>Chipmunk Preset</h2>
-            <p>Pilih preset yang ingin digunakan sebelum upload atau convert.</p>
+            <p>Pilih preset sekali, lalu semua lagu dalam batch akan memakai preset yang sama.</p>
           </div>
           <div class="processed-counter">
             <span class="counter-icon">◉</span>
@@ -85,15 +85,15 @@
         </div>
 
         <div class="upload-label-row">
-          <span>UPLOAD AUDIO</span>
+          <span>UPLOAD MULTIPLE AUDIO</span>
           <span id="selectedCount">0 file selected</span>
         </div>
 
         <div class="dropzone" id="dropzone" tabindex="0">
           <input id="fileInput" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac" multiple hidden />
           <div class="upload-ring"><span>⇧</span></div>
-          <strong>Drop audio files here</strong>
-          <p>atau klik untuk memilih file dari perangkat</p>
+          <strong>Drop multiple audio files here</strong>
+          <p>atau klik lalu pilih banyak lagu sekaligus dari perangkat</p>
           <div class="format-row"><span>MP3</span><span>WAV</span><span>M4A</span><span>OGG</span><span>FLAC</span><span>AAC</span></div>
         </div>
 
@@ -112,7 +112,7 @@
 
         <div class="progress-wrap" id="progressBar" hidden>
           <div class="progress-track"><div id="progressFill"></div></div>
-          <span>Processing audio...</span>
+          <span>Processing batch...</span>
         </div>
 
         <div class="engine-status" id="engineStatus">
@@ -127,20 +127,20 @@
           <div><span>ACCESS</span><strong>Free & Unlimited</strong></div>
         </div>
         <div class="side-list">
-          <div><span class="check">✓</span><p><b>No sign up</b><small>Tim Anda langsung bisa menggunakan.</small></p></div>
-          <div><span class="check">✓</span><p><b>No credits</b><small>Tidak ada daily limit atau paket premium.</small></p></div>
-          <div><span class="check">✓</span><p><b>Local processing</b><small>Audio diproses di browser pengguna.</small></p></div>
-          <div><span class="check">✓</span><p><b>Private</b><small>File tidak perlu diunggah ke server kami.</small></p></div>
+          <div><span class="check">✓</span><p><b>Multi-file batch</b><small>Pilih banyak lagu dalam satu kali upload.</small></p></div>
+          <div><span class="check">✓</span><p><b>Download all ZIP</b><small>Unduh seluruh hasil sekaligus.</small></p></div>
+          <div><span class="check">✓</span><p><b>Stable processing</b><small>Lagu diproses satu per satu agar RAM lebih stabil.</small></p></div>
+          <div><span class="check">✓</span><p><b>Private</b><small>Audio diproses lokal dan tidak perlu diunggah ke server kami.</small></p></div>
         </div>
-        <div class="side-note"><span>INFO</span> Unlimited berarti aplikasi tidak memasang kuota. Kapasitas proses tetap mengikuti RAM dan CPU perangkat pengguna.</div>
+        <div class="side-note"><span>INFO</span> Jika satu file gagal, batch lain tetap lanjut. File gagal akan tetap berada di queue agar bisa dicoba ulang.</div>
       </aside>
     </section>
 
     <section class="panel result-panel" id="resultPanel" hidden>
       <div class="result-header">
         <div>
-          <div class="section-kicker">CONVERSION RESULT</div>
-          <h2>Your audio is ready</h2>
+          <div class="section-kicker">LATEST RESULT</div>
+          <h2>Audio ready to download</h2>
         </div>
         <div class="result-badges">
           <span class="success-chip" id="editedChip">AUDIO EDITED</span>
@@ -154,12 +154,13 @@
     <section class="panel history-panel">
       <div class="history-head">
         <div>
-          <div class="section-kicker">CONVERSION HISTORY</div>
-          <h2>Recent conversions</h2>
-          <p>Riwayat hanya tersimpan selama halaman ini masih terbuka.</p>
+          <div class="section-kicker">CONVERSION RESULTS</div>
+          <h2>All converted songs</h2>
+          <p>Download satu per satu dari tabel atau download seluruh hasil sebagai ZIP.</p>
         </div>
         <div class="history-controls">
           <span class="count-badge" id="historyCount">0 entries</span>
+          <button id="downloadAllBtn" class="download-btn" style="height:30px;padding:0 12px;cursor:not-allowed;opacity:.35" disabled>⇩ Download All ZIP</button>
           <button class="danger-btn" id="clearHistory">Clear history</button>
         </div>
       </div>
@@ -172,19 +173,21 @@
         <div class="empty-state" id="emptyHistory">
           <div class="empty-icon">♫</div>
           <strong>No conversion yet</strong>
-          <span>Audio yang selesai dikonversi akan muncul di sini.</span>
+          <span>Semua hasil conversion akan muncul di sini.</span>
         </div>
       </div>
     </section>
 
     <footer>
       <span>CENTRAL.BLOX AUDIO TOOL</span>
-      <p>Free personal & team utility · browser-based processing</p>
+      <p>Free personal & team utility · multi-file browser processing</p>
     </footer>
   </main>
 
   <div class="toast" id="toast"></div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.11.6/ffmpeg.min.js"></script>
-  <script src="./app.js?v=stable-core-st-1"></script>
+
+  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="./app.js?v=batch-stable-zip-3"></script>
 </body>
 </html>
