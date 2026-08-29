@@ -117,7 +117,7 @@
 
         <div class="engine-status" id="engineStatus">
           <span class="engine-dot"></span>
-          Audio engine akan disiapkan otomatis di background.
+          Menyiapkan browser audio engine...
         </div>
       </div>
 
@@ -129,10 +129,10 @@
         <div class="side-list">
           <div><span class="check">✓</span><p><b>Multi-file batch</b><small>Pilih banyak lagu dalam satu kali upload.</small></p></div>
           <div><span class="check">✓</span><p><b>Download all ZIP</b><small>Unduh seluruh hasil sekaligus.</small></p></div>
-          <div><span class="check">✓</span><p><b>Stable processing</b><small>Lagu diproses satu per satu agar RAM lebih stabil.</small></p></div>
+          <div><span class="check">✓</span><p><b>Browser-native engine</b><small>Tidak lagi memakai FFmpeg Worker/core yang sebelumnya error.</small></p></div>
           <div><span class="check">✓</span><p><b>Private</b><small>Audio diproses lokal dan tidak perlu diunggah ke server kami.</small></p></div>
         </div>
-        <div class="side-note"><span>INFO</span> Jika satu file gagal, batch lain tetap lanjut. File gagal akan tetap berada di queue agar bisa dicoba ulang.</div>
+        <div class="side-note"><span>INFO</span> Jika satu file tidak dapat didecode browser, lagu lain tetap lanjut. File yang gagal tetap berada di queue agar bisa dicoba ulang.</div>
       </aside>
     </section>
 
@@ -186,8 +186,8 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/higuma/ogg-vorbis-encoder-js@master/lib/OggVorbisEncoder.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="./app.js?v=batch-stable-zip-3"></script>
+  <script src="./app.js?v=webaudio-vorbis-batch-1"></script>
 </body>
 </html>
