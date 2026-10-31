@@ -170,10 +170,10 @@
         </div>
 
         <div class="dropzone" id="dropzone" tabindex="0">
-          <input id="fileInput" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac" multiple hidden />
+          <input id="fileInput" class="native-file-input" type="file" accept=".mp3,.wav,.m4a,.ogg,.flac,.aac,audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/ogg,audio/flac,audio/aac" multiple aria-label="Pilih file audio" />
           <div class="upload-ring"><span>⇧</span></div>
           <strong>Drop multiple audio files here</strong>
-          <p>atau klik lalu pilih banyak lagu sekaligus dari perangkat</p>
+          <p>klik area ini atau drag & drop banyak lagu sekaligus</p><span class="browse-hint">Choose audio files</span>
           <div class="format-row"><span>MP3</span><span>WAV</span><span>M4A</span><span>OGG</span><span>FLAC</span><span>AAC</span></div>
         </div>
 
@@ -269,6 +269,6 @@
 
   <script src="https://cdn.jsdelivr.net/gh/higuma/ogg-vorbis-encoder-js@master/lib/OggVorbisEncoder.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="./app.js?v=ogg-flac-custom-2"></script>
+  <script src="./app.js?v=native-upload-fix-3"></script>
 </body>
 </html>
