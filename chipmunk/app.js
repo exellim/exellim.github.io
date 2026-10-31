@@ -190,7 +190,6 @@ function renderQueue(){
   });
 }
 
-drop.onclick=()=>{if(!state.isConverting)input.click();};
 drop.onkeydown=e=>{
   if(!state.isConverting&&(e.key==='Enter'||e.key===' ')){
     e.preventDefault();
@@ -308,7 +307,7 @@ async function ensureJSZip(){
 async function warmLibraries(){
   setEngineStatus('Menyiapkan browser audio engine...');
   try{
-    if(preset.outputFormat==='flac'){
+    if(state.outputFormat==='flac'){
       await ensureFlacEncoder();
       setEngineStatus('Audio engine ready · FLAC lossless / 48 kHz.',true);
     }else{
@@ -316,7 +315,7 @@ async function warmLibraries(){
       setEngineStatus('Audio engine ready · OGG Vorbis q5 / 48 kHz.',true);
     }
   }catch(err){
-    console.warn('Vorbis preload failed:',err);
+    console.warn('Encoder preload failed:',err);
     setEngineStatus('Encoder belum termuat. Akan dicoba lagi saat Convert.');
   }
 }
@@ -527,6 +526,7 @@ convertBtn.onclick=async()=>{
   let successCount=0;
 
   state.isConverting=true;
+  input.disabled=true;
   state.batchTotal=batch.length;
   state.batchIndex=0;
 
@@ -537,8 +537,13 @@ convertBtn.onclick=async()=>{
   $('#progressFill').style.width='0%';
 
   try{
-    await ensureVorbisEncoder();
-    setEngineStatus('Audio engine ready · Web Audio / OGG Vorbis q5.',true);
+    if(preset.outputFormat==='flac'){
+      await ensureFlacEncoder();
+      setEngineStatus('Audio engine ready · FLAC lossless / 48 kHz.',true);
+    }else{
+      await ensureVorbisEncoder();
+      setEngineStatus('Audio engine ready · OGG Vorbis q5 / 48 kHz.',true);
+    }
 
     for(let i=0;i<batch.length;i++){
       state.batchIndex=i;
@@ -586,6 +591,7 @@ convertBtn.onclick=async()=>{
     setEngineStatus('Audio engine belum siap. Coba refresh halaman.');
   }finally{
     state.isConverting=false;
+    input.disabled=false;
     state.batchIndex=0;
     state.batchTotal=1;
     $$('.preset').forEach(b=>b.disabled=false);
