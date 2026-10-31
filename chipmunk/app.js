@@ -34,7 +34,7 @@ const gameSpeedDisplay=$('#gameSpeedDisplay');
 const gameRelation=$('#gameRelation');
 const settingsMode=$('#settingsMode');
 const gainWarning=$('#gainWarning');
-const formatChoices=$('.format-choice');
+const formatChoices=$$('.format-choice');
 
 $('#processedCount').textContent=state.processed;
 
@@ -117,9 +117,13 @@ gainRange.addEventListener('input',()=>{if(!state.isConverting)setSettings(state
 gainInput.addEventListener('change',()=>{if(!state.isConverting)setSettings(state.speed,gainInput.value,'custom');});
 
 function updateFormatUI(){
-  formatChoices.forEach(button=>button.classList.toggle('active',button.dataset.format===state.outputFormat));
-  if(!state.isConverting){
-    $('#convertBtnText').textContent=`Convert to Chipmunk ${state.outputFormat.toUpperCase()}`;
+  formatChoices.forEach(button=>{
+    button.classList.toggle('active',button.dataset.format===state.outputFormat);
+    button.disabled=state.isConverting;
+  });
+  const label=$('#convertBtnText');
+  if(label&&!state.isConverting){
+    label.textContent=`Convert to Chipmunk ${state.outputFormat.toUpperCase()}`;
   }
 }
 
@@ -531,7 +535,8 @@ convertBtn.onclick=async()=>{
   state.batchIndex=0;
 
   renderQueue();
-  $$('.preset').forEach(b=>b.disabled=true);
+  $('.preset').forEach(b=>b.disabled=true);
+  formatChoices.forEach(b=>b.disabled=true);
   $('#clearQueue').disabled=true;
   $('#progressBar').hidden=false;
   $('#progressFill').style.width='0%';
@@ -594,7 +599,8 @@ convertBtn.onclick=async()=>{
     input.disabled=false;
     state.batchIndex=0;
     state.batchTotal=1;
-    $$('.preset').forEach(b=>b.disabled=false);
+    $('.preset').forEach(b=>b.disabled=false);
+    formatChoices.forEach(b=>b.disabled=false);
     $('#clearQueue').disabled=false;
     $('#convertBtnText').textContent=state.files.length?'Retry / Convert Queue':`Convert to Chipmunk ${state.outputFormat.toUpperCase()}`;
     renderQueue();
@@ -727,3 +733,11 @@ if('requestIdleCallback' in window){
 }else{
   setTimeout(()=>{void warmLibraries();},500);
 }
+
+window.addEventListener('error',event=>{
+  console.error('Runtime error:',event.error||event.message);
+  const status=document.querySelector('#engineStatus');
+  if(status && !state.isConverting){
+    status.innerHTML='<span class="engine-dot"></span> Terjadi error pada halaman. Refresh sekali jika kontrol tidak merespons.';
+  }
+});
