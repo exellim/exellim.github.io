@@ -80,7 +80,7 @@ function syncSettingsUI(){
   $('#activePresetLabel').textContent=`${Number(state.speed).toFixed(2)}X / ${formatDb(state.gainDb).toUpperCase()}`;
   settingsMode.textContent=state.preset==='custom'?'CUSTOM':`PRESET ${state.preset}X`;
   gainWarning.hidden=state.gainDb<=0;
-  $('.preset').forEach(button=>button.classList.toggle('active',state.preset===button.dataset.preset));
+  $$('.preset').forEach(button=>button.classList.toggle('active',state.preset===button.dataset.preset));
 }
 
 function setSettings(speed,gainDb,mode='custom'){
@@ -99,7 +99,7 @@ function setFromGameSpeed(gameSpeed){
   syncSettingsUI();
 }
 
-$('.preset').forEach(button=>{
+$$('.preset').forEach(button=>{
   button.onclick=()=>{
     if(state.isConverting)return;
     const key=button.dataset.preset;
@@ -387,7 +387,7 @@ convertBtn.onclick=async()=>{
   state.batchIndex=0;
 
   renderQueue();
-  $$('.preset').forEach(b=>b.disabled=true);
+  $$$('.preset').forEach(b=>b.disabled=true);
   $('#clearQueue').disabled=true;
   $('#progressBar').hidden=false;
   $('#progressFill').style.width='0%';
@@ -444,7 +444,7 @@ convertBtn.onclick=async()=>{
     state.isConverting=false;
     state.batchIndex=0;
     state.batchTotal=1;
-    $$('.preset').forEach(b=>b.disabled=false);
+    $$$('.preset').forEach(b=>b.disabled=false);
     $('#clearQueue').disabled=false;
     $('#convertBtnText').textContent=state.files.length?'Retry / Convert Queue':'Convert to Chipmunk OGG';
     renderQueue();
