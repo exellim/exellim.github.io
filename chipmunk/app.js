@@ -11,6 +11,7 @@ const state={
   speed:2.5,
   gainDb:-6,
   gameSpeed:0.4,
+  outputFormat:'ogg',
   files:[],
   history:[],
   processed:Number(localStorage.getItem('cbProcessed')||0),
@@ -33,6 +34,7 @@ const gameSpeedDisplay=$('#gameSpeedDisplay');
 const gameRelation=$('#gameRelation');
 const settingsMode=$('#settingsMode');
 const gainWarning=$('#gainWarning');
+const formatChoices=$('.format-choice');
 
 $('#processedCount').textContent=state.processed;
 
@@ -113,6 +115,40 @@ speedInput.addEventListener('change',()=>{if(!state.isConverting)setSettings(spe
 gameSpeedInput.addEventListener('change',()=>{if(!state.isConverting)setFromGameSpeed(gameSpeedInput.value);});
 gainRange.addEventListener('input',()=>{if(!state.isConverting)setSettings(state.speed,gainRange.value,'custom');});
 gainInput.addEventListener('change',()=>{if(!state.isConverting)setSettings(state.speed,gainInput.value,'custom');});
+
+function updateFormatUI(){
+  formatChoices.forEach(button=>button.classList.toggle('active',button.dataset.format===state.outputFormat));
+  if(!state.isConverting){
+    $('#convertBtnText').textContent=`Convert to Chipmunk ${state.outputFormat.toUpperCase()}`;
+  }
+}
+
+function setOutputFormat(format){
+  if(state.isConverting)return;
+  state.outputFormat=format==='flac'?'flac':'ogg';
+  updateFormatUI();
+  if(state.outputFormat==='flac'){
+    setEngineStatus('Menyiapkan FLAC lossless encoder...');
+    void ensureFlacEncoder()
+      .then(()=>setEngineStatus('Audio engine ready · FLAC lossless / 48 kHz.',true))
+      .catch(err=>{
+        console.warn('FLAC preload failed:',err);
+        setEngineStatus('FLAC encoder akan dicoba lagi saat Convert.');
+      });
+  }else{
+    setEngineStatus('Menyiapkan OGG Vorbis encoder...');
+    void ensureVorbisEncoder()
+      .then(()=>setEngineStatus('Audio engine ready · OGG Vorbis q5 / 48 kHz.',true))
+      .catch(err=>{
+        console.warn('Vorbis preload failed:',err);
+        setEngineStatus('OGG encoder akan dicoba lagi saat Convert.');
+      });
+  }
+}
+
+formatChoices.forEach(button=>{
+  button.addEventListener('click',()=>setOutputFormat(button.dataset.format));
+});
 
 function validAudio(file){
   return /\.(mp3|wav|m4a|ogg|flac|aac)$/i.test(file.name)||(file.type&&file.type.startsWith('audio/'));
@@ -225,6 +261,28 @@ async function ensureVorbisEncoder(){
   throw lastError||new Error('OGG Vorbis encoder gagal dimuat.');
 }
 
+async function ensureFlacEncoder(){
+  if(window.Flac&&typeof window.Flac.create_libflac_encoder==='function')return window.Flac;
+
+  const sources=[
+    'https://cdn.jsdelivr.net/npm/libflacjs@5.6.0/dist/libflac.js',
+    'https://unpkg.com/libflacjs@5.6.0/dist/libflac.js'
+  ];
+
+  let lastError=null;
+  for(const src of sources){
+    try{
+      await loadScript(src,()=>!!(window.Flac&&typeof window.Flac.create_libflac_encoder==='function'));
+      if(window.Flac&&typeof window.Flac.create_libflac_encoder==='function')return window.Flac;
+    }catch(err){
+      console.warn('FLAC source failed:',src,err);
+      lastError=err;
+    }
+  }
+
+  throw lastError||new Error('FLAC encoder gagal dimuat.');
+}
+
 async function ensureJSZip(){
   if(window.JSZip)return window.JSZip;
 
@@ -250,8 +308,13 @@ async function ensureJSZip(){
 async function warmLibraries(){
   setEngineStatus('Menyiapkan browser audio engine...');
   try{
-    await ensureVorbisEncoder();
-    setEngineStatus('Audio engine ready · Web Audio / OGG Vorbis q5.',true);
+    if(preset.outputFormat==='flac'){
+      await ensureFlacEncoder();
+      setEngineStatus('Audio engine ready · FLAC lossless / 48 kHz.',true);
+    }else{
+      await ensureVorbisEncoder();
+      setEngineStatus('Audio engine ready · OGG Vorbis q5 / 48 kHz.',true);
+    }
   }catch(err){
     console.warn('Vorbis preload failed:',err);
     setEngineStatus('Encoder belum termuat. Akan dicoba lagi saat Convert.');
@@ -342,6 +405,80 @@ async function encodeVorbis(audioBuffer){
   }
 }
 
+async function encodeFlac(audioBuffer){
+  const Flac=await ensureFlacEncoder();
+  const sampleRate=48000;
+  const channels=Math.max(1,Math.min(2,audioBuffer.numberOfChannels));
+  const bitsPerSample=16;
+  const compressionLevel=5;
+  const totalSamples=audioBuffer.length;
+  const chunks=[];
+
+  const encoder=Flac.create_libflac_encoder(
+    sampleRate,
+    channels,
+    bitsPerSample,
+    compressionLevel,
+    totalSamples,
+    false
+  );
+
+  if(!encoder)throw new Error('FLAC encoder tidak dapat dibuat.');
+
+  const writeCallback=(buffer,bytes)=>{
+    const view=buffer instanceof Uint8Array?buffer:new Uint8Array(buffer);
+    chunks.push(view.slice(0,bytes||view.length));
+  };
+  const metadataCallback=()=>{};
+
+  try{
+    const initStatus=Flac.init_encoder_stream(
+      encoder,
+      writeCallback,
+      metadataCallback,
+      false,
+      0
+    );
+
+    if(initStatus!==0)throw new Error(`FLAC encoder init gagal (status ${initStatus}).`);
+
+    const blockFrames=16384;
+    for(let start=0;start<totalSamples;start+=blockFrames){
+      const end=Math.min(totalSamples,start+blockFrames);
+      const frameCount=end-start;
+      const pcm=new Int32Array(frameCount*channels);
+
+      for(let i=0;i<frameCount;i++){
+        for(let ch=0;ch<channels;ch++){
+          const data=audioBuffer.getChannelData(ch);
+          const value=Math.max(-1,Math.min(1,data[start+i]||0));
+          pcm[i*channels+ch]=value<0
+            ?Math.round(value*32768)
+            :Math.round(value*32767);
+        }
+      }
+
+      const ok=Flac.FLAC__stream_encoder_process_interleaved(
+        encoder,
+        pcm,
+        frameCount
+      );
+
+      if(ok!==true)throw new Error('FLAC encoding gagal saat memproses PCM.');
+
+      setFileProgress(0.55+0.45*(end/totalSamples));
+      if(start%(blockFrames*8)===0)await sleep(0);
+    }
+
+    const finished=Flac.FLAC__stream_encoder_finish(encoder);
+    if(finished!==true)throw new Error('FLAC encoder gagal melakukan finalisasi.');
+
+    return new Blob(chunks,{type:'audio/flac'});
+  }finally{
+    try{Flac.FLAC__stream_encoder_delete(encoder);}catch(_){ }
+  }
+}
+
 async function convertOne(file,preset){
   setFileProgress(0.03);
   const decoded=await decodeAudio(file);
@@ -350,12 +487,17 @@ async function convertOne(file,preset){
   const rendered=await renderChipmunk(decoded,preset);
 
   setFileProgress(0.55);
-  const blob=await encodeVorbis(rendered);
+
+  const format=preset.outputFormat==='flac'?'flac':'ogg';
+  const blob=format==='flac'
+    ?await encodeFlac(rendered)
+    :await encodeVorbis(rendered);
+
   setFileProgress(1);
 
-  if(!blob||!blob.size)throw new Error(`Output OGG kosong: ${file.name}`);
+  if(!blob||!blob.size)throw new Error(`Output ${format.toUpperCase()} kosong: ${file.name}`);
 
-  const title=`${preset.speed}x-${safeBaseName(file.name)}.ogg`;
+  const title=`${preset.speed}x-${safeBaseName(file.name)}.${format}`;
 
   return{
     title,
@@ -363,6 +505,7 @@ async function convertOne(file,preset){
     speed:preset.speed,
     gainDb:preset.gainDb,
     gameSpeed:preset.gameSpeed,
+    format,
     size:blob.size,
     createdAt:Date.now(),
     blob,
@@ -377,7 +520,8 @@ convertBtn.onclick=async()=>{
   const preset={
     speed:state.speed,
     gainDb:state.gainDb,
-    gameSpeed:state.gameSpeed
+    gameSpeed:state.gameSpeed,
+    outputFormat:state.outputFormat
   };
   const failed=[];
   let successCount=0;
@@ -387,7 +531,7 @@ convertBtn.onclick=async()=>{
   state.batchIndex=0;
 
   renderQueue();
-  $$$('.preset').forEach(b=>b.disabled=true);
+  $$('.preset').forEach(b=>b.disabled=true);
   $('#clearQueue').disabled=true;
   $('#progressBar').hidden=false;
   $('#progressFill').style.width='0%';
@@ -444,9 +588,9 @@ convertBtn.onclick=async()=>{
     state.isConverting=false;
     state.batchIndex=0;
     state.batchTotal=1;
-    $$$('.preset').forEach(b=>b.disabled=false);
+    $$('.preset').forEach(b=>b.disabled=false);
     $('#clearQueue').disabled=false;
-    $('#convertBtnText').textContent=state.files.length?'Retry / Convert Queue':'Convert to Chipmunk OGG';
+    $('#convertBtnText').textContent=state.files.length?'Retry / Convert Queue':`Convert to Chipmunk ${state.outputFormat.toUpperCase()}`;
     renderQueue();
 
     setTimeout(()=>{
@@ -462,7 +606,10 @@ function showResult(item,scroll=true){
   $('#resultSpeed').textContent=`${Number(item.speed).toFixed(2)}X`;
   const resultGame=$('#resultGameSpeed');
   if(resultGame)resultGame.textContent=`GAME ${Number(item.gameSpeed).toFixed(2)}X`;
-  $('#currentResult').innerHTML=`<div class="result-card"><div class="track-row"><div class="track-icon">♫</div><div><strong>${escapeHtml(item.title)}</strong><div>OGG VORBIS · CONVERTER ${Number(item.speed).toFixed(2)}X · ROBLOX ${Number(item.gameSpeed).toFixed(2)}X · ${formatDb(item.gainDb)} · ${formatMB(item.size)}</div></div></div><audio controls preload="metadata" src="${item.url}"></audio><a class="download-btn" href="${item.url}" download="${escapeHtml(item.title)}">⇩ &nbsp; Download Audio (.ogg)</a></div>`;
+  const resultFormat=$('#resultFormat');
+  const formatLabel=item.format==='flac'?'FLAC LOSSLESS':'OGG VORBIS';
+  if(resultFormat)resultFormat.textContent=item.format.toUpperCase();
+  $('#currentResult').innerHTML=`<div class="result-card"><div class="track-row"><div class="track-icon">♫</div><div><strong>${escapeHtml(item.title)}</strong><div>${formatLabel} · CONVERTER ${Number(item.speed).toFixed(2)}X · ROBLOX ${Number(item.gameSpeed).toFixed(2)}X · ${formatDb(item.gainDb)} · ${formatMB(item.size)}</div></div></div><audio controls preload="metadata" src="${item.url}"></audio><a class="download-btn" href="${item.url}" download="${escapeHtml(item.title)}">⇩ &nbsp; Download Audio (.${item.format})</a></div>`;
   if(scroll)$('#resultPanel').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
@@ -483,7 +630,7 @@ function renderHistory(){
 
   state.history.forEach((item,index)=>{
     const row=document.createElement('tr');
-    row.innerHTML=`<td>${String(index+1).padStart(2,'0')}</td><td>${escapeHtml(item.title)}</td><td><strong>${Number(item.speed).toFixed(2)}x</strong> converter<br><span>${Number(item.gameSpeed).toFixed(2)}x Roblox · ${formatDb(item.gainDb)}</span></td><td>${formatMB(item.size)}</td><td>${new Date(item.createdAt).toLocaleString('id-ID',{dateStyle:'short',timeStyle:'short'})}</td><td><a class="table-action" title="Download" href="${item.url}" download="${escapeHtml(item.title)}">⇩</a></td>`;
+    row.innerHTML=`<td>${String(index+1).padStart(2,'0')}</td><td>${escapeHtml(item.title)}</td><td><strong>${item.format.toUpperCase()} · ${Number(item.speed).toFixed(2)}x</strong> converter<br><span>${Number(item.gameSpeed).toFixed(2)}x Roblox · ${formatDb(item.gainDb)}</span></td><td>${formatMB(item.size)}</td><td>${new Date(item.createdAt).toLocaleString('id-ID',{dateStyle:'short',timeStyle:'short'})}</td><td><a class="table-action" title="Download" href="${item.url}" download="${escapeHtml(item.title)}">⇩</a></td>`;
     body.appendChild(row);
   });
 
@@ -565,6 +712,7 @@ $('#clearHistory').onclick=()=>{
 };
 
 syncSettingsUI();
+updateFormatUI();
 renderQueue();
 renderHistory();
 
