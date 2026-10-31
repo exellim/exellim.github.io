@@ -142,6 +142,28 @@
           </div>
         </section>
 
+        <section class="output-format-section" aria-labelledby="outputFormatTitle">
+          <div class="output-format-head">
+            <div>
+              <div class="section-kicker">OUTPUT FORMAT</div>
+              <h3 id="outputFormatTitle">Download Format</h3>
+              <p>Pilih OGG untuk file lebih kecil atau FLAC untuk kualitas lossless.</p>
+            </div>
+          </div>
+          <div class="output-format-grid">
+            <button type="button" class="format-choice active" data-format="ogg">
+              <span class="format-choice-icon">♫</span>
+              <span><strong>OGG Vorbis</strong><small>Quality q5 · ukuran lebih kecil</small></span>
+              <span class="format-check">✓</span>
+            </button>
+            <button type="button" class="format-choice" data-format="flac">
+              <span class="format-choice-icon">◆</span>
+              <span><strong>FLAC</strong><small>Lossless · file lebih besar</small></span>
+              <span class="format-check">✓</span>
+            </button>
+          </div>
+        </section>
+
         <div class="upload-label-row">
           <span>UPLOAD MULTIPLE AUDIO</span>
           <span id="selectedCount">0 file selected</span>
@@ -186,7 +208,7 @@
         </div>
         <div class="side-list">
           <div><span class="check">✓</span><p><b>Multi-file batch</b><small>Pilih banyak lagu dalam satu kali upload.</small></p></div>
-          <div><span class="check">✓</span><p><b>Download all ZIP</b><small>Unduh seluruh hasil sekaligus.</small></p></div>
+          <div><span class="check">✓</span><p><b>OGG + FLAC output</b><small>Pilih file kecil OGG atau FLAC lossless.</small></p></div>
           <div><span class="check">✓</span><p><b>Custom In-Game Speed</b><small>PlaybackSpeed Roblox dihitung otomatis dari speed converter.</small></p></div>
           <div><span class="check">✓</span><p><b>Private</b><small>Audio diproses lokal dan tidak perlu diunggah ke server kami.</small></p></div>
         </div>
@@ -202,7 +224,7 @@
         </div>
         <div class="result-badges">
           <span class="success-chip" id="editedChip">AUDIO EDITED</span>
-          <span class="info-chip">OGG</span>
+          <span class="info-chip" id="resultFormat">OGG</span>
           <span class="info-chip" id="resultSpeed">2.5x</span>
           <span class="info-chip" id="resultGameSpeed">GAME 0.40x</span>
         </div>
@@ -247,6 +269,6 @@
 
   <script src="https://cdn.jsdelivr.net/gh/higuma/ogg-vorbis-encoder-js@master/lib/OggVorbisEncoder.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="./app.js?v=custom-game-speed-db-1"></script>
+  <script src="./app.js?v=ogg-flac-custom-2"></script>
 </body>
 </html>
