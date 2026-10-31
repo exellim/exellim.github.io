@@ -8,6 +8,9 @@ const PRESETS={
 
 const state={
   preset:'2.5',
+  speed:2.5,
+  gainDb:-6,
+  gameSpeed:0.4,
   files:[],
   history:[],
   processed:Number(localStorage.getItem('cbProcessed')||0),
@@ -21,6 +24,15 @@ const input=$('#fileInput');
 const drop=$('#dropzone');
 const convertBtn=$('#convertBtn');
 const downloadAllBtn=$('#downloadAllBtn');
+const speedRange=$('#speedRange');
+const speedInput=$('#speedInput');
+const gameSpeedInput=$('#gameSpeedInput');
+const gainRange=$('#gainRange');
+const gainInput=$('#gainInput');
+const gameSpeedDisplay=$('#gameSpeedDisplay');
+const gameRelation=$('#gameRelation');
+const settingsMode=$('#settingsMode');
+const gainWarning=$('#gainWarning');
 
 $('#processedCount').textContent=state.processed;
 
@@ -52,19 +64,55 @@ function setEngineStatus(text,ready=false){
   $('#engineStatus').innerHTML=`<span class="engine-dot"${ready?' style="background:#3ee2d5;box-shadow:0 0 8px rgba(62,226,213,.5)"':''}></span> ${text}`;
 }
 
-function updatePresetUI(){
-  const p=PRESETS[state.preset];
-  $('#activePresetLabel').textContent=`${p.speed}X / ${p.gainDb} DB`;
+function clamp(value,min,max){return Math.min(max,Math.max(min,value));}
+function roundTo(value,digits=2){const p=10**digits;return Math.round(value*p)/p;}
+function formatDb(value){return `${value>0?"+":""}${Number(value).toFixed(Number(value)%1?1:0)} dB`;}
+function inverseGameSpeed(speed){return roundTo(clamp(1/speed,0.25,4),2);}
+
+function syncSettingsUI(){
+  speedRange.value=String(state.speed);
+  speedInput.value=Number(state.speed).toFixed(2);
+  gainRange.value=String(state.gainDb);
+  gainInput.value=String(state.gainDb);
+  gameSpeedInput.value=Number(state.gameSpeed).toFixed(2);
+  gameSpeedDisplay.textContent=`${Number(state.gameSpeed).toFixed(2)}×`;
+  gameRelation.innerHTML=`Speed <b>${Number(state.speed).toFixed(2)}×</b> → set Roblox to <b>${Number(state.gameSpeed).toFixed(2)}×</b>`;
+  $('#activePresetLabel').textContent=`${Number(state.speed).toFixed(2)}X / ${formatDb(state.gainDb).toUpperCase()}`;
+  settingsMode.textContent=state.preset==='custom'?'CUSTOM':`PRESET ${state.preset}X`;
+  gainWarning.hidden=state.gainDb<=0;
+  $('.preset').forEach(button=>button.classList.toggle('active',state.preset===button.dataset.preset));
 }
 
-$$('.preset').forEach(button=>{
+function setSettings(speed,gainDb,mode='custom'){
+  state.speed=roundTo(clamp(Number(speed)||1,0.25,4),2);
+  state.gainDb=roundTo(clamp(Number(gainDb)||0,-24,12),1);
+  state.gameSpeed=inverseGameSpeed(state.speed);
+  state.preset=mode;
+  syncSettingsUI();
+}
+
+function setFromGameSpeed(gameSpeed){
+  const game=roundTo(clamp(Number(gameSpeed)||1,0.25,4),2);
+  state.gameSpeed=game;
+  state.speed=roundTo(clamp(1/game,0.25,4),2);
+  state.preset='custom';
+  syncSettingsUI();
+}
+
+$('.preset').forEach(button=>{
   button.onclick=()=>{
     if(state.isConverting)return;
-    state.preset=button.dataset.preset;
-    $$('.preset').forEach(x=>x.classList.toggle('active',x===button));
-    updatePresetUI();
+    const key=button.dataset.preset;
+    const p=PRESETS[key];
+    setSettings(p.speed,p.gainDb,key);
   };
 });
+
+speedRange.addEventListener('input',()=>{if(!state.isConverting)setSettings(speedRange.value,state.gainDb,'custom');});
+speedInput.addEventListener('change',()=>{if(!state.isConverting)setSettings(speedInput.value,state.gainDb,'custom');});
+gameSpeedInput.addEventListener('change',()=>{if(!state.isConverting)setFromGameSpeed(gameSpeedInput.value);});
+gainRange.addEventListener('input',()=>{if(!state.isConverting)setSettings(state.speed,gainRange.value,'custom');});
+gainInput.addEventListener('change',()=>{if(!state.isConverting)setSettings(state.speed,gainInput.value,'custom');});
 
 function validAudio(file){
   return /\.(mp3|wav|m4a|ogg|flac|aac)$/i.test(file.name)||(file.type&&file.type.startsWith('audio/'));
@@ -314,6 +362,7 @@ async function convertOne(file,preset){
     originalName:file.name,
     speed:preset.speed,
     gainDb:preset.gainDb,
+    gameSpeed:preset.gameSpeed,
     size:blob.size,
     createdAt:Date.now(),
     blob,
@@ -325,7 +374,11 @@ convertBtn.onclick=async()=>{
   if(!state.files.length||state.isConverting)return;
 
   const batch=[...state.files];
-  const preset=PRESETS[state.preset];
+  const preset={
+    speed:state.speed,
+    gainDb:state.gainDb,
+    gameSpeed:state.gameSpeed
+  };
   const failed=[];
   let successCount=0;
 
@@ -406,8 +459,10 @@ convertBtn.onclick=async()=>{
 function showResult(item,scroll=true){
   $('#resultPanel').hidden=false;
   $('#editedChip').textContent=`EDITED · ${item.gainDb} DB`;
-  $('#resultSpeed').textContent=`${item.speed}X`;
-  $('#currentResult').innerHTML=`<div class="result-card"><div class="track-row"><div class="track-icon">♫</div><div><strong>${escapeHtml(item.title)}</strong><div>OGG VORBIS · CHIPMUNK ${item.speed}X · ${item.gainDb} DB · ${formatMB(item.size)}</div></div></div><audio controls preload="metadata" src="${item.url}"></audio><a class="download-btn" href="${item.url}" download="${escapeHtml(item.title)}">⇩ &nbsp; Download Audio (.ogg)</a></div>`;
+  $('#resultSpeed').textContent=`${Number(item.speed).toFixed(2)}X`;
+  const resultGame=$('#resultGameSpeed');
+  if(resultGame)resultGame.textContent=`GAME ${Number(item.gameSpeed).toFixed(2)}X`;
+  $('#currentResult').innerHTML=`<div class="result-card"><div class="track-row"><div class="track-icon">♫</div><div><strong>${escapeHtml(item.title)}</strong><div>OGG VORBIS · CONVERTER ${Number(item.speed).toFixed(2)}X · ROBLOX ${Number(item.gameSpeed).toFixed(2)}X · ${formatDb(item.gainDb)} · ${formatMB(item.size)}</div></div></div><audio controls preload="metadata" src="${item.url}"></audio><a class="download-btn" href="${item.url}" download="${escapeHtml(item.title)}">⇩ &nbsp; Download Audio (.ogg)</a></div>`;
   if(scroll)$('#resultPanel').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
@@ -428,7 +483,7 @@ function renderHistory(){
 
   state.history.forEach((item,index)=>{
     const row=document.createElement('tr');
-    row.innerHTML=`<td>${String(index+1).padStart(2,'0')}</td><td>${escapeHtml(item.title)}</td><td>${item.speed}x / ${item.gainDb} dB</td><td>${formatMB(item.size)}</td><td>${new Date(item.createdAt).toLocaleString('id-ID',{dateStyle:'short',timeStyle:'short'})}</td><td><a class="table-action" title="Download" href="${item.url}" download="${escapeHtml(item.title)}">⇩</a></td>`;
+    row.innerHTML=`<td>${String(index+1).padStart(2,'0')}</td><td>${escapeHtml(item.title)}</td><td><strong>${Number(item.speed).toFixed(2)}x</strong> converter<br><span>${Number(item.gameSpeed).toFixed(2)}x Roblox · ${formatDb(item.gainDb)}</span></td><td>${formatMB(item.size)}</td><td>${new Date(item.createdAt).toLocaleString('id-ID',{dateStyle:'short',timeStyle:'short'})}</td><td><a class="table-action" title="Download" href="${item.url}" download="${escapeHtml(item.title)}">⇩</a></td>`;
     body.appendChild(row);
   });
 
@@ -509,7 +564,7 @@ $('#clearHistory').onclick=()=>{
   toast('History dibersihkan.');
 };
 
-updatePresetUI();
+syncSettingsUI();
 renderQueue();
 renderHistory();
 
