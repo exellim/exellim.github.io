@@ -160,7 +160,14 @@ function validAudio(file){
 
 function addFiles(files){
   const valid=files.filter(validAudio);
-  state.files.push(...valid);
+  const seen=new Set(state.files.map(file=>`${file.name}|${file.size}|${file.lastModified}`));
+  for(const file of valid){
+    const key=`${file.name}|${file.size}|${file.lastModified}`;
+    if(!seen.has(key)){
+      state.files.push(file);
+      seen.add(key);
+    }
+  }
   renderQueue();
   if(valid.length!==files.length){
     toast(`${files.length-valid.length} file dilewati karena format tidak didukung.`);
@@ -172,7 +179,8 @@ function renderQueue(){
   const list=$('#queueList');
 
   queue.hidden=!state.files.length;
-  convertBtn.disabled=!state.files.length||state.isConverting;
+  const nativeCount=input.files?input.files.length:0;
+  convertBtn.disabled=(!state.files.length&&!nativeCount)||state.isConverting;
   $('#selectedCount').textContent=`${state.files.length} file${state.files.length===1?'':'s'} selected`;
   $('#queueSubtext').textContent=state.files.length
     ?`${state.files.length} audio ready · diproses satu per satu agar stabil`
@@ -194,6 +202,12 @@ function renderQueue(){
   });
 }
 
+drop.addEventListener('click',event=>{
+  if(state.isConverting)return;
+  if(event.target.closest('label[for="fileInput"]'))return;
+  input.click();
+});
+
 drop.onkeydown=e=>{
   if(!state.isConverting&&(e.key==='Enter'||e.key===' ')){
     e.preventDefault();
@@ -211,15 +225,21 @@ drop.ondrop=e=>{
   if(state.isConverting)return;
   addFiles([...e.dataTransfer.files]);
 };
-input.onchange=()=>{
+function syncFilesFromInput(){
   if(state.isConverting)return;
-  addFiles([...input.files]);
-  input.value='';
-};
+  const picked=[...(input.files||[])];
+  if(!picked.length)return;
+  state.files=[];
+  addFiles(picked);
+}
+
+input.addEventListener('change',syncFilesFromInput);
+input.addEventListener('input',syncFilesFromInput);
 
 $('#clearQueue').onclick=()=>{
   if(state.isConverting)return;
   state.files=[];
+  input.value='';
   renderQueue();
 };
 
@@ -517,7 +537,17 @@ async function convertOne(file,preset){
 }
 
 convertBtn.onclick=async()=>{
-  if(!state.files.length||state.isConverting)return;
+  if(state.isConverting)return;
+
+  if(!state.files.length&&input.files&&input.files.length){
+    state.files=[...input.files].filter(validAudio);
+    renderQueue();
+  }
+
+  if(!state.files.length){
+    toast('Pilih minimal satu file audio terlebih dahulu.');
+    return;
+  }
 
   const batch=[...state.files];
   const preset={
@@ -535,7 +565,7 @@ convertBtn.onclick=async()=>{
   state.batchIndex=0;
 
   renderQueue();
-  $('.preset').forEach(b=>b.disabled=true);
+  $$('.preset').forEach(b=>b.disabled=true);
   formatChoices.forEach(b=>b.disabled=true);
   $('#clearQueue').disabled=true;
   $('#progressBar').hidden=false;
@@ -599,7 +629,7 @@ convertBtn.onclick=async()=>{
     input.disabled=false;
     state.batchIndex=0;
     state.batchTotal=1;
-    $('.preset').forEach(b=>b.disabled=false);
+    $$('.preset').forEach(b=>b.disabled=false);
     formatChoices.forEach(b=>b.disabled=false);
     $('#clearQueue').disabled=false;
     $('#convertBtnText').textContent=state.files.length?'Retry / Convert Queue':`Convert to Chipmunk ${state.outputFormat.toUpperCase()}`;
